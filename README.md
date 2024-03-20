@@ -1,4 +1,4 @@
-###RUSH BBY!!!!
+##RUSH BBY!!!!
 
 Shit is written in rust, so you need cargo.
 
