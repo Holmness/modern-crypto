@@ -1,28 +1,27 @@
 use std::collections::HashMap;
-use const_random::const_random;
 use rand::Rng;
 
 
-const SBOX: [u8; 256] = const_random!([u8; 256]);
+// const SBOX: [u8; 256] = const_random!([u8; 256]);
 //const NUMBER_ROUNDS: u8 = 32;
 
 
-fn encode_1_round(plain_text: &mut [u8] , key: &[u8]) {
+fn encode_1_round(plain_text: &mut [u8] , key: &[u8], sbox: &[u8]) {
     let mut temp: u8 = plain_text[0];
     for j in 0..4 {
         temp = temp + key[j];
-        temp = SBOX[temp as usize] + plain_text[(j+1) % plain_text.len()];
+        temp = sbox[temp as usize] + plain_text[(j+1) % plain_text.len()];
         temp = (temp << 1) | (temp >> 7);
         plain_text[(j+1) % plain_text.len()] = temp;
     }
 }
 
-fn encode_2_rounds(plain_text: &mut [u8] , key: &[u8]) {    
+fn encode_2_rounds(plain_text: &mut [u8] , key: &[u8], sbox: &[u8]) {    
     let mut temp: u8 = plain_text[0];
     for _ in 0..2 {
         for j in 0..4 {
             temp = temp + key[j];
-            temp = SBOX[temp as usize] + plain_text[(j+1) % plain_text.len()];
+            temp = sbox[temp as usize] + plain_text[(j+1) % plain_text.len()];
             temp = (temp << 1) | (temp >> 7);
             plain_text[(j+1) % plain_text.len()] = temp;
         }
@@ -83,7 +82,7 @@ fn _treyfer_decode(cipher: &mut [u8], key: &[u8]) {
     }
 } */
 
-fn hashmap_creation(size: usize, cipher_key: &[u8]) -> HashMap<[u8; 4], ([u8; 4],[u8; 4],[u8; 4])> {
+fn hashmap_creation(size: usize, cipher_key: &[u8], sbox: &[u8]) -> HashMap<[u8; 4], ([u8; 4],[u8; 4],[u8; 4])> {
     let mut rng = rand::thread_rng();
     let mut map: HashMap<[u8; 4], ([u8; 4],[u8; 4],[u8; 4])> = HashMap::new();
 
@@ -92,9 +91,9 @@ fn hashmap_creation(size: usize, cipher_key: &[u8]) -> HashMap<[u8; 4], ([u8; 4]
         rng.fill(&mut map_key);
 
         let mut value2 = map_key.clone();
-        encode_1_round(&mut value2, cipher_key);
+        encode_1_round(&mut value2, cipher_key, sbox);
         let mut value3 = map_key.clone();
-        encode_2_rounds(&mut value3, cipher_key);
+        encode_2_rounds(&mut value3, cipher_key, sbox);
 
         map.entry(map_key).or_insert((map_key,value2,value3));
 
@@ -104,17 +103,23 @@ fn hashmap_creation(size: usize, cipher_key: &[u8]) -> HashMap<[u8; 4], ([u8; 4]
 
 
 fn main() {
+    let mut rng = rand::thread_rng();
+    let mut sbox: [u8; 256] = [0; 256];
+    for i in sbox.iter_mut() {
+        *i = rng.gen();
+    }
+    println!("{:?}", sbox);
     let key = "dead".as_bytes();
 
     println!("Creating map!");
-    let map = hashmap_creation(2_u32.pow(16) as usize, key);
+    let map = hashmap_creation(2_u32.pow(16) as usize, key, &sbox);
     println!("Map created!\nLooking for values");
 
     for (_, (value1,value2,value3)) in map.iter() {
         match map.get(value2) {
             None => continue,
             Some((bvalue1,bvalue2,_)) => {
-                println!("FOUND A VALUE BICH");
+                println!("FOUND A VALUE");
 
                 if value3 == bvalue2 {
                     println!("SLID PAIR FOUND");
@@ -129,7 +134,7 @@ fn main() {
                     for c in value2 {
                         print!("{} ", *c);
                     }
-                    print!(")");
+                    print!("), ");
 
                     print!("(");
                     for c in value3 {
@@ -150,6 +155,10 @@ fn main() {
                     }
                     print!(")");
                     println!("");
+                    
+                    for c in value3 {
+                        
+                    }
                     
                     continue;
                 }
